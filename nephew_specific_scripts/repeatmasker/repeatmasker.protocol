@@ -1,0 +1,15 @@
+# create split files
+## done in non-redundant directory 
+for i in *.fasta; do echo $i; /nfs/projects/ergatis/ergatis-v2r16b1-cgbr1/bin/split_multifasta --input_file=$i --output_dir=/nfs/labs/nephew/GSF1118_Ivan/repeatMasker/reads  --output_list=/nfs/labs/nephew/GSF1118_Ivan/repeatMasker/$i.list --output_file_prefix=$i -seqs_per_file=50000 --total_files= --output_subdir_size=0 --compress_output=0; done;
+# run naive parallized repeatmasker
+for i in *.list; do echo $i; perl repeatmasker_sge.pl -l $i -o /nfs/labs/nephew/GSF1118_Ivan/repeatMasker/split_outputs >> sub.log; done;
+# cat outputs together for each non-redundant file
+## done in non-redundant directory
+for i in *.fasta; do echo $i; cat /nfs/labs/nephew/GSF1118_Ivan/repeatMasker/split_outputs/$i*.out > /nfs/labs/nephew/GSF1118_Ivan/repeatMasker/$i.tsv; done;
+# create individual repeat count tables
+## done in non-redundant directory
+for i in *.map; do echo $i; perl /nfs/labs/nephew/GSF1118_Ivan/repeatMasker/create_lib_countstables.pl -m $i -r /nfs/labs/nephew/GSF1118_Ivan/repeatMasker/ > /nfs/labs/nephew/GSF1118_Ivan/repeatMasker/$i.counts; done;
+# combine tables
+perl combine_tables.pl *counts > repeatmasker_countstable.tsv
+# add repeat class
+perl add_repeat_class.pl -c repeatmasker_countstable.tsv -r /nfs/labs/nephew/GSF1118_Ivan/repeatMasker/ > repeatmasker_countstable.tsv.new

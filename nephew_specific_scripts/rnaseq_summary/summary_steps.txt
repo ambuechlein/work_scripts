@@ -1,0 +1,24 @@
+######## 1 ########
+Run step1.pl script;
+>perl /nfs/labs/nephew/scripts/rnaseq_summary/step1.pl -d `pwd` -g /nfs/labs/nephew/human_databases/gencode_v23/gencode.v23.forsummary.gtf -c /nfs/labs/nephew/human_databases/gencode_v23/chr.list -t /nfs/labs/nephew/GSF1186_Nakshatri/tophat/
+
+######## 2 ########
+create sample.list (cut -f1 sampleorder.tsv > result/sample.list)
+run step2.pl
+>perl /nfs/labs/nephew/scripts/rnaseq_summary/step2.pl -d `pwd` -s sample.list
+
+######## 3 ########
+run command in step3
+>perl /nfs/labs/nephew/scripts/rnaseq_summary/createDataMap.pl -d /nfs/labs/nephew/GSF1186_Nakshatri/fastq/non_redundant/ -t /nfs/labs/nephew/GSF1186_Nakshatri/tophat/ -r /nfs/labs/nephew/GSF1186_Nakshatri/repeatMasker/ -s /nfs/labs/nephew/GSF1186_Nakshatri/summary/result/ -o datamap.tsv
+
+######## 4 ########
+create sam.gz.list file
+The sam.gz.list has a list of all the full paths to the files (expanded*sam.gz) produced in step #3.
+ls -1 --color=never `pwd`/result/*.sam.gz > sam.gz.list
+
+The sampleorder.tsv has a list of the sample names and the labels they will have in the summary (burow.sum) output file. The order of the samples in this file is the order that they will be output in the burow.sum file. The burow.sum file should be loaded into Excel or its equivalent and modified to be the same as previous deliverables.
+
+>perl /nfs/labs/nephew/scripts/rnaseq_summary/extractCountsFromCompleteCounts6.fixTags.new.pl /nfs/labs/nephew/GSF1186_Nakshatri/summary/sam.gz.list /nfs/labs/nephew/GSF1186_Nakshatri/summary/sampleorder.tsv /nfs/labs/nephew/human_databases/gencode_v23/gencode.v23.forsummary.gtf landen_pdx.summary.tsv landen_pdx > & step4.log
+
+######## 5 ########
+>perl /nfs/labs/nephew/scripts/rnaseq_summary/makeCountsTable.pl -s sampleorder.tsv -l sam.gz.list -o landen_pdx.countstable.tsv

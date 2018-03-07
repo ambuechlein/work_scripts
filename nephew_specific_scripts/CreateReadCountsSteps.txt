@@ -1,0 +1,10 @@
+ls -1 --color=never *.fastq.gz > ../sampleorderA
+# remove the ".fastq.gz" suffix from sampleorderA
+cp sampleorderA sampleorderB
+# change sampleorderB to be meaningful names (your discretion)
+paste sampleorderA sampleorderB > sampleorder.tsv
+rm sampleorderA sampleorderB
+cat fastq/*.count > ivanReadCounts.tsv
+perl /nfs/labs/nephew/scripts/add_samplename.pl sampleorder.tsv ivanReadCounts.tsv > ivanReadCounts.tsv2
+mv ivanReadCounts.tsv2 ivanReadCounts.tsv
+~/bin/transpose.sh ivanReadCounts.tsv > ivanReadCounts.forSummary.tsv

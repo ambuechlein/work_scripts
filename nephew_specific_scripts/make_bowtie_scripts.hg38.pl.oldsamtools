@@ -1,0 +1,79 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+use Getopt::Long;
+use Cwd;
+my %options;
+my $result = GetOptions(\%options,
+                        "dir|d=s",
+                        "out|o=s",
+                       );
+my $dir = $options{dir};
+my $outdir = $options{out};
+my $cwd = cwd();
+
+opendir(my $din, $dir) or die "can't open directroy: $!\n";
+while(my $f = readdir($din)){
+  next unless($f =~ /.fastq.gz$/o);
+  my $prefix = $f;  $prefix =~ s/\.fastq.gz$//o;
+  my $file = $dir . '/' . $f;
+  my $fullout = $outdir.'/'.$prefix.'/';
+
+  my $command1 = "/home/abuechle/bin/bowtie2-2.2.9/bowtie2 -p 8 -k 20 -S ${fullout}${prefix}.sam --un ${fullout}${prefix}.notmapped -x /nfs/labs/nephew/human_databases/gencode_v23/genome -U $file";
+  my $command2 = "perl /nfs/labs/nephew/filterSam.pl ${fullout}${prefix}.sam > ${fullout}${prefix}.best.sam";
+
+  my $command3 = "samtools view -@ 8 -bS ${fullout}${prefix}.best.sam > ${fullout}${prefix}.bam";
+  my $command4 = "samtools sort -@ 8 -m 1G ${fullout}${prefix}.bam ${fullout}${prefix}.sorted";
+  my $command5 = "samtools index ${fullout}${prefix}.sorted.bam";
+  my $command6 = "samtools view -h -F4 ${fullout}${prefix}.sorted.bam | awk '{if(match(\$0, /^\\\@/) || match(\$3, /^chr/) ){print \$0}}' | samtools view -Sb - > ${fullout}${prefix}.chr.bam";
+  my $command7 = "samtools sort -@ 8 -m 1G ${fullout}${prefix}.chr.bam ${fullout}${prefix}.chr.sorted";
+
+  my $command8 = "/home/abuechle/bin/bedtools2/bin/genomeCoverageBed -bg -trackline -trackopts 'name=\"$prefix\" visibility=2 color=255,30,30' -ibam ${fullout}${prefix}.chr.sorted.bam -g /nfs/labs/nephew/human_databases/gencode_v23/chrSizes.tsv > ${fullout}${prefix}.chr.bedgraph";
+
+  my $command9 = "python /home/abuechle/.local/bin/htseq-count -f bam --type=promoter  ${fullout}${prefix}.chr.sorted.bam /nfs/labs/nephew/human_databases/gencode_v23/gencode.v23.promoter.proteincoding.gtf > ${fullout}${prefix}.chr.sorted.gencodePromoterCount.tsv";
+
+  open(my $sh, ">bowtie.$f.sh") or die "can't open shell script bowtie.$f.sh: $!\n\n";
+  print $sh '#!/bin/bash', "\n";
+  print $sh 'echo ">>>>> bowtie2 "', "\n";
+  print $sh 'echo ">>>>> startdate "`date`', "\n";
+  print $sh 'echo ">>>>> hostname "`hostname`', "\n";
+  print $sh 'echo ">>>>> job_name "$JOB_NAME', "\n";
+  print $sh 'echo ">>>>> job_id "$JOB_ID', "\n";
+
+  print $sh 'mkdir -p '.$fullout, "\n";
+  print $sh 'echo "Starting Bowtie"', "\n";
+  print $sh $command1 . ' || { echo "bowtie failed"; exit 1; }'."\n";
+  print $sh 'echo "Starting Filter"', "\n";
+  print $sh $command2 . ' || { echo "best filter failed"; exit 1; }'."\n";
+  print $sh 'echo "Starting samtools conversions"', "\n";
+  print $sh $command3 . ' || { echo "samtools sam2bam failed"; exit 1; }'."\n";
+  print $sh 'echo "Starting samtools sort 1"', "\n";
+  print $sh $command4 . ' || { echo "samtools sort failed"; exit 1; }'."\n";
+  print $sh 'echo "Starting samtools index 1"', "\n";
+  print $sh $command5 . ' || { echo "samtools index failed"; exit 1; }'."\n";
+  print $sh 'echo "Starting awk"', "\n";
+  print $sh $command6 . ' || { echo "awk filter failed"; exit 1; }'."\n";
+  print $sh 'echo "Starting samtools sort 2"', "\n";
+  print $sh $command7 . ' || { echo "sort filter failed"; exit 1; }'."\n";
+  print $sh 'echo "Starting samtools index 2"', "\n";
+  print $sh "samtools index ${fullout}${prefix}.chr.sorted.bam" . ' || { echo "samtools index2 failed"; exit 1; }'."\n";
+  print $sh 'echo "Starting bedgraph conversions"', "\n";
+  print $sh $command8 . ' || { echo "bed2bedgraph failed"; exit 1; }'."\n";
+  print $sh 'echo "Starting compressing and deleting"', "\n";
+  print $sh "pigz -f ${fullout}${prefix}.sam" . ' || { echo "gzip failed"; exit 1; }'."\n";
+  print $sh "rm -f ${fullout}${prefix}.bam ${fullout}${prefix}.best.sam ${fullout}${prefix}.chr.bam" . ' || { echo "rm failed"; exit 1; }'."\n";
+#  print $sh 'echo "Counting total mapped"', "\n";
+#  print $sh "tc=\`samtools view -F 4 ${fullout}${prefix}.chr.sorted.bam | cut -f1 | sort | uniq | wc -l\`\n"; #>> $directory/$sub.total_mapped.txt\n";
+#  print $sh "echo -e \"$prefix\t\$tc\" > ${fullout}${prefix}.total_mapped.txt\n";
+#  print $sh 'echo "Starting htseqcount"', "\n";
+#  print $sh $command9 . ' || { echo "htseq failed"; exit 1; }'."\n";
+
+  print $sh 'echo "Starting summary counts"', "\n";
+  print $sh "/nfs/labs/nephew/countMappedReads.pl ${fullout}${prefix}.sorted.bam" . ' || { echo "summary count failed"; exit 1; }'."\n";
+
+  print $sh 'echo "Finished"', "\n";
+  close $sh;
+  system("chmod 755 bowtie.$f.sh");
+  system("qsub -q bigmem -pe pe_slots 4 -wd $cwd bowtie.$f.sh");
+}
+exit;
