@@ -6,6 +6,7 @@ use Getopt::Long;
 my %options;
 my $result = GetOptions(\%options,
                         "dir|d=s",
+                        "genome|g=s",
                         "out|o=s",
                        );
 my $dir = $options{dir};
@@ -21,7 +22,7 @@ while(my $f = readdir($din)){
   $prefix =~ s/_R1_001.paired.fastq.gz//g;
   my $fullout = $outdir.'/'.$prefix.'/';
 
-  my $command1 = "/N/u/abuechle/Karst/miniconda3/bin/bowtie2 -p 8 --mm --very-sensitive -S ${fullout}${prefix}.default.sam -x /N/dc2/projects/cgbgsf/Rnor_6.0/genome -1 $file1 -2 $file2";
+  my $command1 = "/N/u/abuechle/Karst/miniconda3/bin/bowtie2 -p 8 --mm --very-sensitive -S ${fullout}${prefix}.default.sam -x $options{genome} -1 $file1 -2 $file2";
   my $command2 = "samtools view -@ 8 -bS -F 256 -o ${fullout}${prefix}.default.bam ${fullout}${prefix}.default.sam";
 #  my $command3 = "perl /N/u/abuechle/Karst/bin/filterSam.pl ${fullout}${prefix}.bam | samtools view -h -bS -o ${fullout}${prefix}.best.bam - ";
   my $command4 = "samtools sort -@ 8 -m 4G -O bam -o ${fullout}${prefix}.sortedDF.bam ${fullout}${prefix}.default.bam";
@@ -39,7 +40,6 @@ while(my $f = readdir($din)){
   print $sh 'echo ">>>>> job_name "$JOB_NAME', "\n";
   print $sh 'echo ">>>>> job_id "$JOB_ID', "\n";
 
-  print $sh "which bowtie2\n";
   print $sh 'mkdir -p '.$fullout, "\n";
   print $sh 'echo "Starting Bowtie"', "\n";
   print $sh $command1 . ' || { echo "bowtie failed"; exit 1; }'."\n";
@@ -71,7 +71,7 @@ while(my $f = readdir($din)){
   print $sh "rm -f ${fullout}${prefix}.default.sam ${fullout}${prefix}.default.bam" . ' || { echo "rm failed"; exit 1; }'."\n";
 
   print $sh 'echo "Starting summary counts"', "\n";
-  print $sh "/N/u/abuechle/Karst/bin/countMappedReads.pl ${fullout}${prefix}.sorted.bam" . ' || { echo "summary count failed"; exit 1; }'."\n";
+  print $sh "/N/u/abuechle/Karst/bin/work_scripts/other/countMappedReads.pl ${fullout}${prefix}.sortedDF.bam" . ' || { echo "summary count failed"; exit 1; }'."\n";
 
   print $sh 'echo "Finished"', "\n";
   close $sh;
