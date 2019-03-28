@@ -76,6 +76,5 @@ while(my $f = readdir($din)){
   print $sh 'echo "Finished"', "\n";
   close $sh;
   system("chmod 755 bowtieDF.$f.sh");
-#  system("qsub -q bigmem\@exon.cgb.indiana.edu,bigmem\@intron,bigmem\@antibody,bigmem\@antigen -pe pe_slots 4 -wd $cwd bowtieDF.$f.sh");
 }
 exit;
