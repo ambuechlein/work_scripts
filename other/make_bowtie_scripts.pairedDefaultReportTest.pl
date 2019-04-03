@@ -25,8 +25,8 @@ while(my $f = readdir($din)){
   my $command1 = "/N/u/abuechle/Karst/miniconda3/bin/bowtie2 -p 8 --mm --very-sensitive -S ${fullout}${prefix}.default.sam -x $options{genome} -1 $file1 -2 $file2";
   my $command2 = "samtools view -@ 8 -bS -F 256 -o ${fullout}${prefix}.default.bam ${fullout}${prefix}.default.sam";
 #  my $command3 = "perl /N/u/abuechle/Karst/bin/filterSam.pl ${fullout}${prefix}.bam | samtools view -h -bS -o ${fullout}${prefix}.best.bam - ";
-  my $command4 = "samtools sort -@ 8 -m 4G -O bam -o ${fullout}${prefix}.sortedDF.bam ${fullout}${prefix}.default.bam";
-  my $command5 = "samtools index ${fullout}${prefix}.sortedDF.bam";
+  my $command4 = "samtools sort -@ 8 -m 4G -O bam -o ${fullout}${prefix}.sorted.bam ${fullout}${prefix}.default.bam";
+  my $command5 = "samtools index ${fullout}${prefix}.sorted.bam";
 #   my $command6 = " /N/u/abuechle/Karst/bin/bedtools2-2.26.0/bin/genomeCoverageBed -bg -ibam ${fullout}${prefix}.sorted.bam -g /N/dc2/projects/cgbgsf/Rnor_6.0/chrSizes.tsv > ${fullout}${prefix}.bedgraph";
 #   my $command7 = "perl /N/u/abuechle/Karst/bin/singleMappedBam.random.pl ${fullout}${prefix}.sorted.bam | samtools view -@ 8 -bS - > ${fullout}${prefix}.s.bam";
 #   my $command8 = "samtools sort -@ 8 -m 4G -O bam -o ${fullout}${prefix}.s.sorted.bam ${fullout}${prefix}.s.bam";
@@ -71,7 +71,7 @@ while(my $f = readdir($din)){
   print $sh "rm -f ${fullout}${prefix}.default.sam ${fullout}${prefix}.default.bam" . ' || { echo "rm failed"; exit 1; }'."\n";
 
   print $sh 'echo "Starting summary counts"', "\n";
-  print $sh "/N/u/abuechle/Karst/bin/work_scripts/other/countMappedReads.pl ${fullout}${prefix}.sortedDF.bam" . ' || { echo "summary count failed"; exit 1; }'."\n";
+  print $sh "/N/u/abuechle/Karst/bin/work_scripts/other/countMappedReads.pl ${fullout}${prefix}.sorted.bam" . ' || { echo "summary count failed"; exit 1; }'."\n";
 
   print $sh 'echo "Finished"', "\n";
   close $sh;
